@@ -7,6 +7,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+
 import scala.Tuple2;
 
 import static org.apache.spark.sql.functions.col;
@@ -98,7 +99,21 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public Dataset<Row> gatesWithFlightsToBerlin(Dataset<Row> departureFlights) {
         // TODO: Implement
-        return null;
+        SparkConf conf = new SparkConf().setAppName("SparkExercise").setMaster("local");
+        sparkSession = SparkSession.builder().config(conf).getOrCreate();
+        Dataset<Row> nonEmptyGatesToBerlin = departureFlights
+            .where("flight.arrivalAirport = 'SXF' || 'BER'")  // former and current berlin airport
+            .select("flight.departure.gates")
+            .filter(r -> !r.anyNull());
+        JavaRDD<Row> rdd = nonEmptyGatesToBerlin.toJavaRDD();
+        JavaPairRDD<String, Long> paired = rdd.mapToPair(r -> Tuple2.apply(r.getString(0), 1L));
+        JavaPairRDD<String, Long> reducedByKey = paired.reduceByKey((a, b) -> a + b);
+        Dataset<Row> res = sparkSession
+            .createDataset(reducedByKey.collect(), Encoders.tuple(Encoders.STRING(),Encoders.LONG()))
+            .toDF("gate", "count")
+            .sort(desc("count"));
+        res.show(5, false);  // check dataset looks in console
+        return res;
     }
 
     /**
