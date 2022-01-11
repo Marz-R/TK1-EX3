@@ -6,12 +6,18 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import scala.Tuple2;
 
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.explode;
+import static org.apache.spark.sql.functions.desc;
+
+import org.apache.spark.SparkConf;
 
 public class AirportInfoImpl implements AirportInfo {
+
+    private SparkSession sparkSession;
 
     /**
      * Usage of some example operations.
@@ -61,7 +67,20 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public Dataset<Row> mostCommonDestinations(Dataset<Row> departingFlights) {
         // TODO: Implement
-        return null;
+        SparkConf conf = new SparkConf().setAppName("SparkExercise").setMaster("local");
+        sparkSession = SparkSession.builder().config(conf).getOrCreate();
+        Dataset<Row> nonEmptyArrivalAirports = departingFlights.select("flight.arrivalAirport").filter(r -> !r.anyNull());
+        JavaRDD<Row> rdd = nonEmptyArrivalAirports.toJavaRDD();
+        JavaPairRDD<String, Long> paired = rdd.mapToPair(r -> Tuple2.apply(r.getString(0), 1L));
+        JavaPairRDD<String, Long> reducedByKey = paired.reduceByKey((a, b) -> a + b);
+        Dataset<Row> res = sparkSession.createDataset(reducedByKey.collect(), Encoders.tuple(Encoders.STRING(),Encoders.LONG()))
+            .toDF("arrivalAirport", "count")
+            .sort(desc("count"));
+        res.show(5);  // check dataset looks in console
+        return res;
+
+        // not sure if we need to create an spark entry point in here, but the createDataset function which
+        // converts JavaPairRDD to Dataset is under SparkSession class. 
     }
 
     /**
