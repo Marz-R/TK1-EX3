@@ -147,7 +147,23 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public String ryanairStrike(Dataset<Row> flights) {
         // TODO: Implement
-        return null;
+        // select flights operated by ryanair
+        Dataset<Row> ryanairFlights = flights
+            .where("flight.operatingAirline.iataCode = 'FR'")
+            .select("flight.flightStatus", "flight.originDate");
+        
+        // select canceled flights and group by dates
+        Dataset<Row> ryanairStrikes = ryanairFlights
+            .where("flightStatus = 'X' || 'S'")
+            .select("originDate")
+            .groupBy("originDate").count()
+            .sort(desc("count"));
+        ryanairStrikes.show(false);
+
+        // get the most occurred date
+        String res = ryanairStrikes.select("originDate").first().toString();
+
+        return res;
     }
 
     /**
