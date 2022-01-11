@@ -151,18 +151,19 @@ public class AirportInfoImpl implements AirportInfo {
         Dataset<Row> ryanairFlights = flights
             .where("flight.operatingAirline.iataCode = 'FR'")
             .select("flight.flightStatus", "flight.originDate");
+        //ryanairFlights.show(false);
         
         // select canceled flights and group by dates
         Dataset<Row> ryanairStrikes = ryanairFlights
-            .where("flightStatus = 'X' || 'S'")
+            .where("flightStatus = 'X'")
             .select("originDate")
             .groupBy("originDate").count()
             .sort(desc("count"));
-        ryanairStrikes.show(false);
+        //ryanairStrikes.show(false);
 
         // get the most occurred date
         String res = ryanairStrikes.select("originDate").first().toString();
-
+        //System.out.println(res);
         return res;
     }
 
