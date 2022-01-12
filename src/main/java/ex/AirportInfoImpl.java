@@ -16,6 +16,11 @@ import static org.apache.spark.sql.functions.desc;
 
 import org.apache.spark.SparkConf;
 
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
 public class AirportInfoImpl implements AirportInfo {
 
     private SparkSession sparkSession;
@@ -181,7 +186,28 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public Dataset<Flight> flightsOfAirlineWithStatus(Dataset<Flight> flights, String airlineDisplayCode, String status1, String... status) {
         // TODO: Implement
-        return null;
+        // create Spark Seesion object
+        SparkConf conf = new SparkConf().setAppName("SparkExercise").setMaster("local");
+        sparkSession = SparkSession.builder().config(conf).getOrCreate();
+
+        // select matching flights
+        Dataset<Flight> matchFlights = flights
+            .where(col("airlineDisplayCode").equalTo(airlineDisplayCode));
+        matchFlights.show(false);
+
+        // select flights with desired status
+        Dataset<Flight> flightsWithStatus1 = matchFlights
+            .where(col("flightStatus").equalTo(status1));
+        flightsWithStatus1.show(false);
+
+        // more status
+        if (status != null){
+            for (String s : status) {
+                // how to select matching flights without knowing the actual number of status input
+            } 
+        } 
+
+        return flightsWithStatus1;
     }
 
     /**
@@ -200,7 +226,21 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public double avgNumberOfFlightsInWindow(Dataset<Flight> flights, String lowerLimit, String upperLimit) {
         // TODO: Implement
-        return 0.0d;
+        // initialize variables for calculating average
+        Duration d = Duration.between(LocalTime.parse(lowerLimit), LocalTime.parse(upperLimit));
+        double duration = d.toHours();
+        List<Integer> count = new ArrayList<Integer>(); 
+
+        // counting matching flights
+        Dataset<Flight> notEmptyTime = flights.where(col("scheduledTime").isNotNull());
+        notEmptyTime.foreach(f -> {
+            if (isBefore(f.getScheduledTime(), upperLimit) && isBefore(lowerLimit, f.getScheduledTime())) count.add(1);
+        });
+
+        // calculating average flights per hour
+        int num = count.size();
+        double res = num/duration;
+        return res;
     }
 
     /**
