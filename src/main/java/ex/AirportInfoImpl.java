@@ -137,7 +137,16 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public JavaPairRDD<String, Long> aircraftCountOnDate(Dataset<Row> flights, String originDate) {
         // TODO: Implement
-        return null;
+        SparkConf conf = new SparkConf().setAppName("SparkExercise").setMaster("local");
+        sparkSession = SparkSession.builder().config(conf).getOrCreate();
+        Dataset<Row> nonEmptyAircraftsOnDay = flights
+            .where(col("flight.originDate").equalTo(originDate))
+            .select("flight.aircraftType.modelName")
+            .filter(r -> !r.anyNull());
+        JavaRDD<Row> rdd = nonEmptyAircraftsOnDay.toJavaRDD();
+        JavaPairRDD<String, Long> paired = rdd.mapToPair(r -> Tuple2.apply(r.getString(0), 1L));
+        JavaPairRDD<String, Long> reducedByKey = paired.reduceByKey((a, b) -> a + b);
+        return reducedByKey;
     }
 
     /**
