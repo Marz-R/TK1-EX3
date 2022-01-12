@@ -1,11 +1,16 @@
 package ex.deserialization;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import ex.deserialization.objects.Flight;
 import ex.deserialization.objects.FlightObj;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -42,6 +47,14 @@ public class FlightParserImpl implements FlightParser {
     @Override
     public Dataset<Flight> parseFlights(String path) {
         Dataset<String> lines = sparkSession.sqlContext().read().textFile(path);
-        return null;
+
+        Dataset<Flight> res = lines.mapPartitions((MapPartitionsFunction<String, Flight>) line -> {
+            Gson gson = new GsonBuilder().registerTypeAdapter(FlightObj.class, new FlightAdapter()).create();
+            List<Flight> ls = new LinkedList<>();
+            while (line.hasNext()) ls.add(gson.fromJson(line.next(), FlightObj.class).getFlight());
+            return ls.iterator();
+        }, Encoders.kryo(Flight.class));
+        
+        return res;
     }
 }
