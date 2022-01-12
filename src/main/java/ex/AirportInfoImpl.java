@@ -210,11 +210,11 @@ public class AirportInfoImpl implements AirportInfo {
         flightsWithStatus1.show(false);
 
         // more status
-        if (status != null){
+        /*if (status != null){
             for (String s : status) {
                 // how to select matching flights without knowing the actual number of status input
             } 
-        } 
+        } */
 
         return flightsWithStatus1;
     }
@@ -235,20 +235,25 @@ public class AirportInfoImpl implements AirportInfo {
     @Override
     public double avgNumberOfFlightsInWindow(Dataset<Flight> flights, String lowerLimit, String upperLimit) {
         // TODO: Implement
-        // initialize variables for calculating average
+       // initialize variables for calculating average
         Duration d = Duration.between(LocalTime.parse(lowerLimit), LocalTime.parse(upperLimit));
         double duration = d.toHours();
         List<Integer> count = new ArrayList<Integer>(); 
 
         // counting matching flights
         Dataset<Flight> notEmptyTime = flights.where(col("scheduledTime").isNotNull());
+        notEmptyTime.show(false);
+
         notEmptyTime.foreach(f -> {
             if (isBefore(f.getScheduledTime(), upperLimit) && isBefore(lowerLimit, f.getScheduledTime())) count.add(1);
         });
 
         // calculating average flights per hour
         int num = count.size();
+        System.out.println(num);
+
         double res = num/duration;
+        System.out.println(res);
         return res;
     }
 
