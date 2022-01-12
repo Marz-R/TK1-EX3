@@ -42,6 +42,12 @@ public class FlightParserImpl implements FlightParser {
     @Override
     public Dataset<Flight> parseFlights(String path) {
         Dataset<String> lines = sparkSession.sqlContext().read().textFile(path);
-        return null;
+
+        GsonBuilder gsonBuilder = new GsonBuilder().registerTypeAdapter(FlightObj.class, new FlightAdapter());
+        Gson gson = gsonBuilder.create();
+        FlightObj obj = new FlightObj(new Flight());
+        Dataset<Flight> flightObj = lines.mapPartitions(
+            iter -> iter.map(r -> gson.fromJson(r, obj.getFlight())));
+        return flightObj;
     }
 }
